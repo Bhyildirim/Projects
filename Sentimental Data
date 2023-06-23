@@ -1,0 +1,87 @@
+# Section 1: Read and view data
+
+library(readr)
+
+twint_news <- read_csv("Desktop/Thesis/twint_news.csv", 
+                       col_types = cols(date = col_datetime(format = "%d/%m/%Y %H:%M"), 
+                                        day = col_number(), hour = col_number()))
+
+View(twint_news)
+
+# Section 2: Text Analysis
+
+library(tidytext)
+library(dplyr)
+library(stringr)
+library(tm)
+library(SnowballC)
+library(widyr)
+
+data(stop_words)
+
+twint_news_words <- twint_news %>%
+  select(tweet) %>%
+  unnest_tokens(word, tweet) %>%
+  anti_join(stop_words)
+
+twint_news_words$word <- wordStem(twint_news_words$word)
+
+bigrams_separated <- twint_news_words %>%
+  separate(bigram, c("word1", "word2"), sep = " ")
+
+bigrams_filtered <- bigrams_separated %>%
+  filter(!word1 %in% stop_words$word) %>%
+  filter(!word2 %in% stop_words$word)
+
+bigram_counts <- bigrams_filtered %>% 
+  count(word1, word2, sort = TRUE)
+
+g <- graph_from_data_frame(d = twint_news, directed = FALSE)
+V(g)$size <- degree(g)
+
+library(ggraph)
+library(ggplot2)
+
+set.seed(12345)
+
+ggraph(g, layout = 'fr') +
+  geom_edge_arc(aes(edge_width = n), 
+                colour = "gray50", 
+                lineend = "round", 
+                alpha = 0.3) +
+  geom_node_point(size = degree(g, v = V(g)), colour = 'lightblue') +
+  geom_node_text(data = . %>% filter(degree(g, v = V(g)) > threshold),
+                 aes(label = name), 
+                 repel = TRUE, 
+                 point.padding = unit(0.2, "lines"), 
+                 size = 3, 
+                 colour = "gray10") +
+  scale_edge_width(range = c(0, 2.5)) +
+  scale_edge_alpha(range = c(0, .3)) +
+  theme_graph(background = "white") +
+  guides(edge_width = "none", 
+         edge_alpha = "none", 
+         size = "none")
+
+# Section 3: Correlation Analysis
+
+library(corrplot)
+
+M <- cor(mtcars)
+
+corrplot(M, method = "circle")
+
+heatmap(M)
+
+library(pheatmap)
+library(qgraph)
+
+pheatmap(M)
+
+qgraph(M)
+
+pairs(mtcars)
+
+library(GGally)
+
+ggpairs(mtcars)
